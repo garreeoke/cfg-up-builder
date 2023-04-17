@@ -1,0 +1,73 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: bucket-policy-crud-principal.s3.aws.iam.builder.upbound.io
+  labels:
+    builder: iam
+    cloud: aws
+    service: s3
+    config: bucket-policy-crud-principal
+  annotations:
+    meta.upbound.io/builder-description: "Create a CRUD bucket policy for a single principal"
+    meta.upbound.io/builder-readme: "https://github.com/upbound/builder/tree/main/builders/aws#bucket-policy-crud-principal.s3.aws.iam.builder.upbound.io"
+spec:
+  compositeTypeRef:
+    apiVersion: upbound.io/v1alpha1
+    kind: XBuilder
+  patchSets: []
+  resources:
+    - base:
+        apiVersion: s3.aws.upbound.io/v1beta1
+        kind: BucketPolicy
+        spec:
+          forProvider:
+            policy: patched
+      name: bucketPolicyCrud
+      patches:
+        - type: CombineFromComposite
+          combine:
+            variables:
+              - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.principal
+              - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.resourceArn
+              - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.resourceArn
+            strategy: string
+            string:
+        - fromFieldPath: spec.name
+          toFieldPath: spec.forProvider.policy
+          transforms:
+          - type: string
+            string:
+              fmt: |
+                {
+                  "Version": "2012-10-17",
+                  "Statement": [{
+                    "Sid": "BpCrud",
+                    "Effect": "Allow",
+                    "Principal": "*",
+                    "Action": [
+                      "s3:GetObject",
+                      "s3:ListBucket",
+                      "s3:GetBucketLocation",
+                      "s3:GetObjectVersion",
+                      "s3:PutObject",
+                      "s3:PutObjectAcl",
+                      "s3:GetLifecycleConfiguration",
+                      "s3:PutLifecycleConfiguration",
+                      "s3:DeleteObject"
+                    ],
+                    "Resource": [
+                      "%s",
+                      "%s/*"
+                    ]
+                  }]
+                } 
+        - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.region
+          toFieldPath: spec.forProvider.region
+        - fromFieldPath: spec.name
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              fmt: "%s-crud-rbp"
+        - fromFieldPath: spec.name
+          toFieldPath: spec.forProvider.bucket

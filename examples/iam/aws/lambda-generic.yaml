@@ -1,0 +1,23 @@
+apiVersion: upbound.io/v1alpha1
+kind: Builder
+metadata:
+  name: lambda-example
+spec:
+  name: lambda-example
+  builderConfig:
+    cloudParameters:
+      iam:
+        aws:
+          region: us-west-2
+          resource: "arn:aws:lambda:us-west-2:x:function:garreeoke-builder-test"
+          tags:
+            key: iambuilder
+            value: upbound
+  compositionSelector:
+    matchLabels:
+      builder: iam
+      cloud: aws
+      service: lambda
+      config: change-me # Change config to correct one
+  resourceConfig:
+    providerConfigName: default

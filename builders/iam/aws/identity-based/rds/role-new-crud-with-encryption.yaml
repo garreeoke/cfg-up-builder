@@ -1,0 +1,139 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: role-new-crud-with-encryption.rds.aws.iam.builder.upbound.io
+  labels:
+    builder: iam
+    cloud: aws
+    service: rds
+    config: role-new-crud-with-encryption
+  annotations:
+    meta.upbound.io/builder-description: "Create a new role, policy and policy attachment. The policy will allow a CRUD permissions for databases with encyrption"
+    meta.upbound.io/builder-readme: "https://github.com/upbound/builder/tree/main/builders/aws#role-new-crud-with-encryption.rds.aws.iam.builder.upbound.io"
+spec:
+  compositeTypeRef:
+    apiVersion: upbound.io/v1alpha1
+    kind: XBuilder
+  patchSets:
+    - name: common-fields
+      patches:
+        - fromFieldPath: spec.builderConfig.resourceConfig.providerConfigName
+          toFieldPath: spec.providerConfigRef.name
+        - fromFieldPath: spec.builderConfig.resourceConfig.deletionPolicy
+          toFieldPath: spec.deletionPolicy
+        - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.tags
+          toFieldPath: spec.forProvider.tags
+  resources:
+    - name: rds-iam-role
+      base:
+        apiVersion: iam.aws.upbound.io/v1beta1
+        kind: Role
+        spec:
+          forProvider:
+            assumeRolePolicy: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "Service": [
+                          "s3.amazonaws.com"
+                      ]
+                    },
+                    "Action": "sts:AssumeRole"
+                  }
+                ]
+              }
+      patches:
+        - type: PatchSet
+          patchSetName: common-fields
+        - fromFieldPath: spec.name
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-rds-iam-role"
+        - fromFieldPath: spec.name
+          toFieldPath: metadata.labels[role]
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-rds-iam-role"
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.arn
+          toFieldPath: status.builder.roleArn
+    - base:
+        apiVersion: iam.aws.upbound.io/v1beta1
+        kind: Policy
+        spec:
+          forProvider:
+            description: "Policy for rds instance creation without encryption"
+            policy: patched
+      name: rdsCrudPolicy
+      patches:
+        - type: PatchSet
+          patchSetName: common-fields
+        - fromFieldPath: spec.name
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-rds-create-instance-no-encryption"
+        - type: CombineFromComposite
+          toFieldPath: spec.forProvider.policy
+          combine:
+            variables:
+              - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.resourceArn
+              - fromFieldPath: spec.builderConfig.generic.prefix
+            strategy: string
+            string:
+              fmt: |
+                {
+                  "Sid": "AllowCreateDBInstanceOnly",
+                  "Version": "2012-10-17",
+                  "Statement": [
+                    {
+                      "Effect": "Allow",
+                      "Action": [
+                        "ec2:DescribeVpcAttribute",
+                        "ec2:DescribeSecurityGroups",
+                        "ec2:DescribeInternetGateways",
+                        "ec2:DescribeAvailabilityZones",
+                        "ec2:DescribeVpcs",
+                        "ec2:DescribeAccountAttributes",
+                        "ec2:DescribeSubnets",
+                        "rds:Describe*",
+                        "rds:ListTagsForResource",
+                        "rds:CreateDBInstance",
+                        "rds:CreateDBSubnetGroup",
+                        "kms:ListAliases"
+                      ],
+                      "Resource": "*"
+                    }
+                  ]
+                }
+
+    - base:
+        apiVersion: iam.aws.upbound.io/v1beta1
+        kind: RolePolicyAttachment
+      name: rdsPolicyAttachment
+      patches:
+        - fromFieldPath: spec.name
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-rds-rpa"
+        - fromFieldPath: spec.name
+          toFieldPath: spec.forProvider.policyArnRef.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-rds-create-instance-no-encryption"
+        - fromFieldPath: spec.name
+          toFieldPath: spec.forProvider.roleRef.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-rds-iam-role"

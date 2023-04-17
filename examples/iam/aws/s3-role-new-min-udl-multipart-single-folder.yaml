@@ -1,0 +1,22 @@
+apiVersion: upbound.io/v1alpha1
+kind: Builder
+metadata:
+  name: s3-role-new-min-udl-multipart-single-folder-example
+spec:
+  name: s3-role-new-min-udl-multipart-single-folder-example
+  builderConfig:
+    cloudParameters:
+      generic:
+        folder: folder1 #name of folder
+      iam:
+        aws:
+          region: us-west-2
+          resourceArn: changeMe # bucket arn
+  compositionSelector:
+    matchLabels:
+      builder: iam
+      cloud: aws
+      service: s3
+      config: role-new-min-udl-multipart-single-folder
+  resourceConfig:
+    providerConfigName: default

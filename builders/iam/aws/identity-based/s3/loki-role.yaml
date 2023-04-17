@@ -1,0 +1,149 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: loki-role.s3.aws.iam.builder.upbound.io
+  labels:
+    builder: iam
+    cloud: aws
+    service: s3
+    config: loki-role
+  annotations:
+    meta.upbound.io/builder-description: "Create s3 policy needed for loki"
+    meta.upbound.io/builder-readme: "https://github.com/upbound/builder/tree/main/builders/aws#loki-role.s3.aws.iam.builder.upbound.io"
+spec:
+  compositeTypeRef:
+    apiVersion: upbound.io/v1alpha1
+    kind: XBuilder
+  patchSets:
+    - name: common-fields
+      patches:
+        - fromFieldPath: spec.resourceConfig.providerConfigName
+          toFieldPath: spec.providerConfigRef.name
+        - fromFieldPath: spec.resourceConfig.deletionPolicy
+          toFieldPath: spec.deletionPolicy
+        - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.tags
+          toFieldPath: spec.forProvider.tags
+  resources:
+    - name: loki-iam-role
+      base:
+        apiVersion: iam.aws.upbound.io/v1beta1
+        kind: Role
+      patches:
+        - type: PatchSet
+          patchSetName: common-fields
+        - fromFieldPath: spec.name
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-loki-iam-role"
+        - fromFieldPath: spec.name
+          toFieldPath: metadata.labels[role]
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-loki-iam-role"
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.arn
+          toFieldPath: status.builder.roleArn
+        #- fromFieldPath: spec.cloudParameters.generic.permissionBoundaryArn #CLAIM
+        #  toFieldPath: spec.forProvider.permissionsBoundary
+        - type: CombineFromComposite
+          toFieldPath: spec.forProvider.assumeRolePolicy
+          combine:
+            variables:
+              - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.principal #CLAIM
+              - fromFieldPath: spec.cloudParameters.generic.clusterOIDC #CLAIM
+              - fromFieldPath: spec.cloudParameters.generic.clusterOIDC #CLAIM
+              - fromFieldPath: metadata.labels[crossplane.io/claim-namespace] #CLAIM
+              - fromFieldPath: spec.cloudParameters.generic.saName #CLAIM
+            strategy: string
+            string:
+              fmt: |
+                {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                    {
+                      "Effect": "Allow",
+                      "Principal": {
+                        "Federated": "%s/%s"
+                      },
+                      "Action": "sts:AssumeRoleWithWebIdentity",
+                      "Condition": {
+                        "StringEquals": {
+                          "%s:sub": "system:serviceaccount:%s:%s"
+                        }
+                      }
+                    }
+                  ]
+                }
+    - name: loki-policy
+      base:
+        apiVersion: iam.aws.upbound.io/v1beta1
+        kind: Policy
+      patches:
+        - fromFieldPath: spec.name
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-loki-policy"
+        - type: CombineFromComposite
+          toFieldPath: spec.forProvider.policy
+          combine:
+            variables:
+              - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.resourceArn
+              - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.resourceArn
+            strategy: string
+            string:
+              fmt: |
+                {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                      {
+                          "Effect": "Allow",
+                          "Action": [
+                              "s3:ListObjects",
+                              "s3:ListBucket",
+                              "s3:PutObject",
+                              "s3:GetObject",
+                              "s3:DeleteObject"
+                          ],
+                          "Resource": [
+                              "%s"
+                          ]
+                      },
+                      {
+                          "Effect": "Allow",
+                          "Action": [
+                              "s3:ListBucket"
+                          ],
+                          "Resource": [
+                              "%s"
+                          ]
+                      }
+                  ]
+                }
+    - name: loki-policy-attachment
+      base:
+        apiVersion: iam.aws.upbound.io/v1beta1
+        kind: RolePolicyAttachment
+      patches:
+        - fromFieldPath: spec.name
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-loki-rpa"
+        - fromFieldPath: spec.name
+          toFieldPath: spec.forProvider.policyArnRef.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-loki-policy"
+        - fromFieldPath: spec.name
+          toFieldPath: spec.forProvider.roleRef.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-loki-iam-role"

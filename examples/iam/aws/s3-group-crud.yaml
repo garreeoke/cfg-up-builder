@@ -1,0 +1,21 @@
+apiVersion: upbound.io/v1alpha1
+kind: Builder
+metadata:
+  name: s3-group-crud-example
+spec:
+  name: s3-group-crud-example
+  builderConfig:
+    cloudParameters:
+      iam:
+        aws:
+          region: us-west-2
+          principal: changeMe # Group name
+          resourceArn: arn:aws:s3:::changeMe # Bucket ARN
+  compositionSelector:
+    matchLabels:
+      builder: iam
+      cloud: aws
+      service: s3
+      config: group-crud
+  resourceConfig:
+    providerConfigName: default

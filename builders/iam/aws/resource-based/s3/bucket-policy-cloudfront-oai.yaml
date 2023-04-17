@@ -1,0 +1,61 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: bucket-policy-cloudfront-oai.s3.aws.iam.builder.upbound.io
+  labels:
+    builder: iam
+    cloud: aws
+    service: s3
+    config: bucket-policy-cloudfront-oai
+  annotations:
+    meta.upbound.io/builder-description: "Create a bucket policy for cloudfront oai"
+    meta.upbound.io/builder-readme: "https://github.com/upbound/builder/tree/main/builders/aws#bucket-policy-cloudfront-oai.s3.aws.iam.builder.upbound.io"
+spec:
+  compositeTypeRef:
+    apiVersion: upbound.io/v1alpha1
+    kind: XBuilder
+  patchSets: []
+  resources:
+    - base:
+        apiVersion: s3.aws.upbound.io/v1beta1
+        kind: BucketPolicy
+        spec:
+          forProvider:
+            policy: ""
+      name: bucketPolicyCloudfrontOai
+      patches:
+        - type: CombineFromComposite
+          combine:
+            variables:
+              - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.principal
+              - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.resourceArn
+            strategy: string
+            string:
+              fmt: |
+                {
+                  "Version": "2012-10-17",
+                  "Statement": [{
+                    "Sid": "Grant CloudFront Origin Identify access to support private content",
+                    "Effect": "Allow",
+                    "Principal": {
+                      "AWS": "%s"
+                    },
+                    "Action": [
+                      "s3:GetObject"
+                    ],
+                    "Resource": [
+                      "%s/*"
+                    ]
+                  }]
+                }
+          toFieldPath: spec.forProvider.policy
+        - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.region
+          toFieldPath: spec.forProvider.region
+        - fromFieldPath: spec.name
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              fmt: "%s-cloud-front-oai-rbp"
+        - fromFieldPath: spec.name
+          toFieldPath: spec.forProvider.bucket

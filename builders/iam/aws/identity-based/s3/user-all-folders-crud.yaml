@@ -1,0 +1,81 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: user-all-folders-crud.s3.aws.iam.builder.upbound.io
+  labels:
+    builder: iam
+    cloud: aws
+    service: s3
+    config: user-all-folders-crud
+  annotations:
+    meta.upbound.io/builder-description: "Create crud policy for all folders in a bucket and assign it to a user"
+    meta.upbound.io/builder-readme: "https://github.com/upbound/builder/tree/main/builders/aws#user-all-folders-crud.s3.aws.iam.builder.upbound.io"
+spec:
+  compositeTypeRef:
+    apiVersion: upbound.io/v1alpha1
+    kind: XBuilder
+  patchSets:
+    - name: common-fields
+      patches:
+        - fromFieldPath: spec.resourceConfig.providerConfigName
+          toFieldPath: spec.providerConfigRef.name
+        - fromFieldPath: spec.resourceConfig.deletionPolicy
+          toFieldPath: spec.deletionPolicy
+        - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.tags
+          toFieldPath: spec.forProvider.tags
+  resources:
+    - base:
+        apiVersion: iam.aws.upbound.io/v1beta1
+        kind: Policy
+        spec:
+          forProvider:
+            description: "CRUD Policy for all folders in a s3 bucket"
+            policy: patched
+      name: s3CrudPolicy
+      patches:
+        - type: PatchSet
+          patchSetName: common-fields
+        - fromFieldPath: spec.name
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-s3-folder-crud"
+        - type: CombineFromComposite
+          toFieldPath: spec.forProvider.policy
+          combine:
+            variables:
+              - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.resourceArn
+              - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.resourceArn
+            strategy: string
+            string:
+              fmt: |
+                  {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                           "s3:PutObject",
+                           "s3:GetObject",
+                           "s3:GetObjectVersion",
+                           "s3:DeleteObject",
+                           "s3:DeleteObjectVersion"
+                        ],
+                        "Resource": "%s/*"
+                      }
+                    ]
+                  }
+    - base:
+        apiVersion: iam.aws.upbound.io/v1beta1
+        kind: UserPolicyAttachment
+      name: s3UserPolicyAttachment
+      patches:
+        - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.principal
+          toFieldPath: spec.forProvider.user
+        - fromFieldPath: spec.name
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-s3-folder-upa"

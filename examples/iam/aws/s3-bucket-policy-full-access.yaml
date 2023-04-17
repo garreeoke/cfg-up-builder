@@ -1,0 +1,20 @@
+apiVersion: upbound.io/v1alpha1
+kind: Builder
+metadata:
+  name: s3-bucket-policy-full-access-example
+spec:
+  name: s3-bucket-policy-full-access-example
+  builderConfig:
+    cloudParameters:
+      iam:
+        aws:
+          region: us-west-2
+          resourceArn: arn:aws:s3:::changeme-bucketname # bucket ARN
+  compositionSelector:
+    matchLabels:
+      builder: iam
+      cloud: aws
+      service: s3
+      config: bucket-policy-full-access
+  resourceConfig:
+    providerConfigName: default

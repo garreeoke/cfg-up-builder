@@ -1,0 +1,75 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: bucket-policy-public-read.s3.aws.iam.builder.upbound.io
+  labels:
+    builder: iam
+    cloud: aws
+    service: s3
+    config: bucket-policy-public-read
+  annotations:
+    meta.upbound.io/builder-description: "Create a public read bucket policy"
+    meta.upbound.io/builder-readme: "https://github.com/upbound/builder/tree/main/builders/aws#bucket-policy-public-read.s3.aws.iam.builder.upbound.io"
+spec:
+  compositeTypeRef:
+    apiVersion: upbound.io/v1alpha1
+    kind: XBuilder
+  patchSets: []
+  resources:
+    - base:
+        apiVersion: s3.aws.upbound.io/v1beta1
+        kind: BucketPublicAccessBlock
+        spec:
+          forProvider:
+            blockPublicPolicy: false
+      name: s3PublicAccessBlock
+      patches:
+        - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.region
+          toFieldPath: spec.forProvider.region
+        - fromFieldPath: spec.name
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              fmt: "%s-public-access-block"
+        - fromFieldPath: spec.name
+          toFieldPath: spec.forProvider.bucket
+    - base:
+        apiVersion: s3.aws.upbound.io/v1beta1
+        kind: BucketPolicy
+        spec:
+          forProvider:
+            policy: patched
+      name: s3AnonRead
+      patches:
+        - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.resourceArn
+          toFieldPath: spec.forProvider.policy
+          transforms:
+          - type: string
+            string:
+              fmt: |
+                  {
+                    "Version": "2012-10-17",
+                    "Statement": [{
+                      "Sid": "PublicRead",
+                      "Effect": "Allow",
+                      "Principal": "*",
+                      "Action": [
+                        "s3:GetObject",
+                        "s3:GetObjectVersion"
+                      ],
+                      "Resource": [
+                        "%s/*"
+                      ]
+                    }]
+                  }
+        - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.region
+          toFieldPath: spec.forProvider.region
+        - fromFieldPath: spec.name
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              fmt: "%s-anon-read-rbp"
+        - fromFieldPath: spec.name
+          toFieldPath: spec.forProvider.bucket

@@ -1,0 +1,21 @@
+apiVersion: upbound.io/v1alpha1
+kind: Builder
+metadata:
+  name: s3-bucket-policy-crud-principal-example
+spec:
+  name: s3-bucket-policy-crud-principal-example
+  builderConfig:
+    cloudParameters:
+      iam:
+        aws:
+          region: us-west-2
+          principal: changeMe # user arn
+          resourceArn: arn:aws:s3:::changeme-bucketname # bucket ARN
+  compositionSelector:
+    matchLabels:
+      builder: iam
+      cloud: aws
+      service: s3
+      config: bucket-policy-crud-principal
+  resourceConfig:
+    providerConfigName: default

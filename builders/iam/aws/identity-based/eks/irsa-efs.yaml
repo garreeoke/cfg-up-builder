@@ -1,0 +1,135 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: irsa-efs.eks.aws.iam.builder.upbound.io
+  labels:
+    builder: iam
+    cloud: aws
+    service: eks
+    config: irsa-efs
+  annotations:
+    meta.upbound.io/builder-description: "Create a new role, policy and policy attachment for irsa eks setup with efs."
+    meta.upbound.io/builder-readme: "https://github.com/upbound/builder/tree/main/builders/aws#irsa-efs.eks.aws.iam.builder.upbound.io"
+spec:
+  compositeTypeRef:
+    apiVersion: upbound.io/v1alpha1
+    kind: XBuilder
+  patchSets:
+    - name: common-fields
+      patches:
+        - fromFieldPath: spec.resourceConfig.providerConfigName
+          toFieldPath: spec.providerConfigRef.name
+        - fromFieldPath: spec.resourceConfig.deletionPolicy
+          toFieldPath: spec.deletionPolicy
+        - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.tags
+          toFieldPath: spec.forProvider.tags
+  resources:
+    - base:
+        apiVersion: iam.aws.upbound.io/v1beta1
+        kind: Role
+        spec:
+          forProvider:
+            assumeRolePolicy: patched
+      name: irsaEfsRole
+      patches:
+        - type: PatchSet
+          patchSetName: common-fields
+        - fromFieldPath: spec.name
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-irsa-efs-role"
+        - fromFieldPath: spec.name
+          toFieldPath: metadata.labels[role]
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-irsa-efs-role"
+        - type: CombineFromComposite
+          toFieldPath: spec.forProvider.assumeRolePolicy
+          combine:
+            strategy: string
+            variables:
+              - fromFieldPath: spec.builderConfig.cloudParameters.generic.oidcArn
+              - fromFieldPath: spec.builderConfig.cloudParameters.generic.condition
+              - fromFieldPath: spec.builderConfig.cloudParameters.generic.oidcHost
+              - fromFieldPath: spec.builderConfig.cloudParameters.generic.serviceAccountNamespace
+              - fromFieldPath: spec.builderConfig.cloudParameters.generic.serviceAccountName
+            string:
+              fmt: |
+                {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                    {
+                      "Effect": "Allow",
+                      "Principal": {
+                        "Federated": "%s"
+                      },
+                      "Action": "sts:AssumeRoleWithWebIdentity",
+                      "Condition": {
+                        "%s": {
+                          "%s:sub": "system:serviceaccount:%s:%s"
+                        }
+                      }
+                    }
+                  ]
+                }
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.arn
+          toFieldPath: status.builder.roleArn
+    - base:
+        apiVersion: iam.aws.upbound.io/v1beta1
+        kind: Policy
+        spec:
+          forProvider:
+            description: "Policy for eks irsa"
+            policy: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": [
+                      "elasticfilesystem:DescribeAccessPoints",
+                      "elasticfilesystem:DescribeFileSystems",
+                      "elasticfilesystem:DescribeMountTargets",
+                      "ec2:DescribeAvailabilityZones"
+                    ],
+                    "Resource": "*"
+                  }
+                ]
+              }
+      name: irsaEfsPolicy
+      patches:
+        - type: PatchSet
+          patchSetName: common-fields
+        - fromFieldPath: spec.name
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-irsa-efs-policy"
+    - base:
+        apiVersion: iam.aws.upbound.io/v1beta1
+        kind: RolePolicyAttachment
+      name: irsaEfsRolePolicyAttachment
+      patches:
+        - fromFieldPath: spec.name
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-irsa-rpa"
+        - fromFieldPath: spec.name
+          toFieldPath: spec.forProvider.policyArnRef.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-irsa-efs-policy"
+        - fromFieldPath: spec.name
+          toFieldPath: spec.forProvider.roleRef.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-irsa-efs-role"

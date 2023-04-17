@@ -1,0 +1,24 @@
+apiVersion: upbound.io/v1alpha1
+kind: Builder
+metadata:
+  name: dynamodb-policy-example
+spec:
+  name: dynamodb-policy-example
+  builderConfig:
+    cloudParameters:
+      aws:
+        region: us-west-2
+        resource: "arn:aws:dynamodb:us-west-2:x:table/builder-test-table" # dynamodb table arn
+        tags:
+          key: iambuilder
+          value: upbound
+  compositionSelector:
+    matchLabels:
+      builder: iam
+      cloud: aws
+      service: dynamodb
+      config: change-me # Change config to correct one
+  resourceConfig:
+    deletionPolicy: Delete
+    providerConfigName: default
+  

@@ -1,0 +1,21 @@
+apiVersion: upbound.io/v1alpha1
+kind: Builder
+metadata:
+  name: s3-user-all-folders-crud-example
+spec:
+  name: s3-user-all-folders-crud-example
+  builderConfig:
+    cloudParameters:
+      iam:
+        aws:
+          region: us-west-2
+          principal: changeMe # User ARN
+          resourceArn: arn:aws:s3:::changeMe # Bucket ARN
+  compositionSelector:
+    matchLabels:
+      builder: iam
+      cloud: aws
+      service: s3
+      config: user-crud
+  resourceConfig:
+    providerConfigName: default

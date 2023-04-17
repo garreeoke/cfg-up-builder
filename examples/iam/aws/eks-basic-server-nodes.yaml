@@ -1,0 +1,19 @@
+apiVersion: upbound.io/v1alpha1
+kind: Builder
+metadata:
+  name: eks-basic-example
+spec:
+  name: eks-basic-example # Name of EKS cluster
+  builderConfig:
+    cloudParameters:
+      iam:
+        aws:
+          region: us-west-2
+  compositionSelector:
+    matchLabels:
+      builder: iam
+      cloud: aws
+      service: eks
+      config: basic-server-nodes
+  resourceConfig:
+    providerConfigName: default

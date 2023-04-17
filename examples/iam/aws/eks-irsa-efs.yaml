@@ -1,0 +1,39 @@
+apiVersion: upbound.io/v1alpha1
+kind: Builder
+metadata:
+  name: eks-irsa-efs-example
+  labels:
+    tags.dkb.cloud/zone: "dev"
+    tags.dkb.cloud/protection-requirement: "dev"
+    tags.dkb.cloud/environment: "dev"
+    tags.dkb.cloud/account: "123456789101"
+spec:
+  name: eks-irsa-efs-example
+  builderConfig:
+    cloudParameters:
+      generic:
+        oidcArn: arn:aws:iam::609897127049:oidc-provider/oidc.eks.us-west-2.amazonaws.com/id/2967FFA7485DA376D15B876B75A37533
+        oidcHost: oidc.eks.us-west-2.amazonaws.com/id/2967FFA7485DA376D15B876B75A37533
+        condition: StringEquals
+        serviceAccountNamespace: default
+        serviceAccountName: default
+      iam:
+        aws:
+          region: us-west-2
+          tags:
+            controlling.dkb.cloud/cost-type: "854749"
+            controlling.dkb.cloud/cuca-ticket: CUCA-00000
+            controlling.dkb.cloud/owner: dpt-test_AT_dkb.ag
+            controlling.dkb.cloud/pool-ticket: POOL-00000
+            controlling.dkb.cloud/product: DPT
+            controlling.dkb.cloud/psp-element: AG-B74-001
+            tags.dkb.cloud/repourl: "aws-ops_crossplane"
+            map-migrated: d-server-01ai501e7hp4zt
+  compositionSelector:
+    matchLabels:
+      builder: iam
+      cloud: aws
+      service: eks
+      config: irsa-efs
+  resourceConfig:
+    providerConfigName: default

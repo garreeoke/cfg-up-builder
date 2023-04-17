@@ -1,0 +1,23 @@
+apiVersion: upbound.io/v1alpha1
+kind: Builder
+metadata:
+  name: poller-policy-url-by-name-example
+spec:
+  name: poller-policy-url-by-name-example
+  builderConfig:
+    cloudParameters:
+      iam:
+        aws:
+          region: us-west-2
+          resource: "arn:aws:sqs:us-west-2:x:[queuename]" # queue url ARN
+          tags:
+            key: iambuilder
+            value: aws
+  compositionSelector:
+    matchLabels:
+      builder: iam
+      cloud: aws
+      service: sqs
+      config: poller-policy-url-by-name
+  resourceConfig:
+    providerConfigName: default

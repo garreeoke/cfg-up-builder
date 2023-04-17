@@ -1,0 +1,93 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xbuilders.upbound.io
+spec:
+  group: upbound.io
+  names:
+    kind: XBuilder
+    plural: xbuilders
+  claimNames:
+    kind: Builder
+    plural: builders
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              name:
+                type: string
+                description: ID/name of the object being referenced
+              builderConfig:
+                type: object
+                description: Parameters to use in the builder
+                properties:
+                  cloudParameters:
+                    type: object
+                    description: Cloud parameters for the builder
+                    properties:
+                      generic:
+                        type: object
+                        description: Place to put generic items
+                        x-kubernetes-preserve-unknown-fields: true
+                      iam:
+                        type: object
+                        description: IAM builder parameters
+                        properties:
+                          aws:
+                            type: object
+                            description: Properities for AWS configurations
+                            properties:
+                              principal:
+                                type: string
+                                description: "ARN or string of the principal"
+                              region:
+                                type: string
+                                description: "AWS cloud region"
+                              resourceArn:
+                                type: string
+                                description: "ARN of the resource the IAM is for"
+                              subResource:
+                                type: string
+                                description: "Sub-resource, such as the queue url or table name"
+                              tags:
+                                type: object
+                                description: Place to put generic items
+                                x-kubernetes-preserve-unknown-fields: true
+                              zone:
+                                type: string
+                                description: "AWS zone within a region"
+                            required:
+                              - region
+              resourceConfig:
+                type: object
+                description: ResourceConfig defines general properties of the crossplane resource
+                properties:
+                  deletionPolicy:
+                    description: Defaults to Delete
+                    enum:
+                      - Delete
+                      - Orphan
+                    type: string
+                  providerConfigName:
+                    type: string
+                required:
+                  - providerConfigName
+            required:
+              - builderConfig
+              - name
+              - resourceConfig
+          status:
+            description: A Status represents the observed state
+            properties:
+              builder:
+                description: Freeform field containing things produced by builder
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+            type: object

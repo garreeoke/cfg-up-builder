@@ -1,0 +1,21 @@
+apiVersion: upbound.io/v1alpha1
+kind: Builder
+metadata:
+  name: s3-role-exists-crud-example
+spec:
+  name: s3-role-exists-crud-example
+  builderConfig:
+    cloudParameters:
+      iam:
+        aws:
+          region: us-west-2
+          principal: changeMe # role
+          resourceArn: "arn:aws:s3:::changeMe" # bucket arn
+  compositionSelector:
+    matchLabels:
+      builder: iam
+      cloud: aws
+      service: s3
+      config: role-exists-crud
+  resourceConfig:
+    providerConfigName: default

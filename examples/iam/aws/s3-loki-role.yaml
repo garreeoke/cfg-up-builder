@@ -1,0 +1,25 @@
+apiVersion: upbound.io/v1alpha1
+kind: Builder
+metadata:
+  name: s3-loki-role-example
+spec:
+  name: s3-loki-role-example
+  builderConfig:
+    cloudParameters:
+      generic:
+        #permissionBoundaryArn:
+        saName: default
+        clusterOIDC: oidc.eks.us-west-2.amazonaws.com/id/changeMe #E74C0FEC6450858B58D91695761EC414
+      iam:
+        aws:
+          region: us-west-2
+          principal: changeMe # OIDC provider ARN
+          resourceArn: arn:aws:s3:::changeMe # Bucket ARN
+  compositionSelector:
+    matchLabels:
+      builder: iam
+      cloud: aws
+      service: s3
+      config: loki-role
+  resourceConfig:
+    providerConfigName: default

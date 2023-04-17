@@ -1,0 +1,21 @@
+apiVersion: upbound.io/v1alpha1
+kind: Builder
+metadata:
+  name: s3-bucket-policy-cloudfront-oai-example
+spec:
+  name: s3-bucket-policy-cloudfront-oai-example
+  builderConfig:
+    cloudParameters:
+      iam:
+        aws:
+          region: us-west-2
+          principal: "arn:aws:builder::cloudfront:user/CloudFront Origin Access Identity E15RXKQ9O6DHZI" # change to valid cloudfront origin access ARN
+          resourceArn: arn:aws:s3:::changeme-bucketname # bucket ARN
+  compositionSelector:
+    matchLabels:
+      builder: iam
+      cloud: aws
+      service: s3
+      config: bucket-policy-cloudfront-oai
+  resourceConfig:
+    providerConfigName: default

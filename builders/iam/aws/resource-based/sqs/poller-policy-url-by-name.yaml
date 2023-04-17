@@ -1,0 +1,73 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: poller-policy-url-by-name.sqs.aws.iam.builder.upbound.io
+  labels:
+    builder: iam
+    cloud: aws
+    service: sqs
+    config: poller-policy-url-by-name
+  annotations:
+    meta.upbound.io/builder-description: "Create a poller policy for a url by name"
+    meta.upbound.io/builder-readme: "https://github.com/upbound/builder/tree/main/builders/aws#poller-policy-url-by-name.sqs.aws.iam.builder.upbound.io"
+spec:
+  compositeTypeRef:
+    apiVersion: upbound.io/v1alpha1
+    kind: XBuilder
+  patchSets:
+    - name: common-fields
+      patches:
+        - fromFieldPath: spec.name
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-sqs-poller-policy-rbp"
+        - fromFieldPath: spec.resourceConfig.providerConfigName
+          toFieldPath: spec.providerConfigRef.name
+        - fromFieldPath: spec.resourceConfig.deletionPolicy
+          toFieldPath: spec.deletionPolicy
+  resources:
+    - name: poller-policy
+      base:
+        apiVersion: builder.aws.upbound.io/v1beta1
+        kind: QueuePolicy
+        spec:
+          deletionPolicy: Delete
+          forProvider:
+            policy: ""
+      patches:
+        - type: PatchSet
+          patchSetName: common-fields
+        - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.region
+          toFieldPath: spec.forProvider.region
+        - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.subResource
+          toFieldPath: spec.forProvider.queueUrl
+        - type: CombineFromComposite
+          toFieldPath: spec.forProvider.policy
+          combine:
+            variables:
+              - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.resourceArn
+              #- fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.subResource
+              - fromFieldPath: spec.builderConfig.cloudParameters.iam.aws.resourceArn
+            strategy: string
+            string:
+              fmt: |
+                {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                    {
+                      "Sid": "Poller-policy",
+                      "Effect": "Allow",
+                      "Action": [
+                        "sqs:ChangeMessageVisibility",
+                        "sqs:ChangeMessageVisibilityBatch",
+                        "sqs:DeleteMessage",
+                        "sqs:DeleteMessageBatch",
+                        "sqs:GetQueueAttributes",
+                        "sqs:ReceiveMessage" 
+                      ],
+                      "Resource": "%s"
+                    }
+                  ]
+                }
